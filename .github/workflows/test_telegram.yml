@@ -28,7 +28,7 @@ jobs:
             clang lld llvm gcc-aarch64-linux-gnu gcc-arm-linux-gnueabi \
             python3 python3-pip ninja-build zip
           sudo ln -sf /usr/bin/ld.lld /usr/bin/ld || true
-          ./prepare_compiler.sh
+
       - name: Notify start on Telegram
         run: |
           curl -s -X POST https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage \
