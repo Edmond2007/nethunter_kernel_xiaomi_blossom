@@ -38,7 +38,7 @@ jobs:
       - name: Build the kernel and log output
         run: |
           mkdir -p out
-          make O=out ARCH=$ARCH CC=$CC nethunter_defconfig
+          make O=out ARCH=$ARCH CC=$CC blossom_defconfig
           make -j$(nproc) O=out ARCH=$ARCH CC=$CC \
             CROSS_COMPILE=aarch64-linux-gnu- \
             CROSS_COMPILE_ARM32=arm-linux-gnueabi- \
