@@ -19,7 +19,6 @@
 #include <linux/tty.h>
 #include <linux/tty_flip.h>
 #include <linux/delay.h>
-#include "mt-plat/mtk_printk_ctrl.h"
 
 #include "8250.h"
 
@@ -28,7 +27,6 @@
 #define MTK_UART_SAMPLE_POINT	0x0b	/* Sample point register */
 #define MTK_UART_AUTOBAUD	0x0c	/* Auto Baud Monitor */
 #define MTK_UART_RATE_FIX	0x0d	/* UART Rate Fix Register */
-#define MTK_UART_GUARD		0x0f	/* Guard time added register */
 #define MTK_UART_ESCAPE_DAT	0x10	/* Escape Character register */
 #define MTK_UART_ESCAPE_EN	0x11	/* Escape Enable register */
 #define MTK_UART_SLEEP_EN	0x12	/* Sleep Enable register */
@@ -63,10 +61,6 @@
 #define MTK_UART_RX_SIZE	0x8000
 #define MTK_UART_TX_TRIGGER	1
 #define MTK_UART_RX_TRIGGER	MTK_UART_RX_SIZE
-
-#ifdef CONFIG_CONSOLE_LOCK_DURATION_DETECT
-char uart_write_statbuf[256];
-#endif
 
 #ifdef CONFIG_SERIAL_8250_DMA
 enum dma_rx_status {
@@ -439,7 +433,7 @@ static int mtk8250_handle_irq(struct uart_port *port)
 #ifndef CONFIG_FIQ_DEBUGGER
 #ifdef CONFIG_PRINTK_MTK_UART_CONSOLE
 	if (uart_console(port) && (serial_port_in(port, UART_LSR) & 0x01))
-		mt_enable_uart();
+		printk_disable_uart = 0;
 #endif
 #endif
 

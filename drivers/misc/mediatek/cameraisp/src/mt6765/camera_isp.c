@@ -29,6 +29,7 @@
 #include <linux/uaccess.h>
 #include <linux/atomic.h>
 #include <linux/sched.h>
+#include <linux/sched/clock.h>
 #include <linux/mm.h>
 #include <linux/vmalloc.h>
 #include <linux/of_platform.h>
@@ -633,11 +634,6 @@ struct S_START_T {
  * excludes head when enque/deque control
  */
 static unsigned int g_regScen = 0xa5a5a5a5; /* remove later */
-
-static unsigned int g_virtual_cq_cnt[2] = {0, 0};
-static unsigned int g_virtual_cq_cnt_a;
-static unsigned int g_virtual_cq_cnt_b;
-static  spinlock_t  virtual_cqcnt_lock;
 
 static /*volatile*/ wait_queue_head_t P2WaitQueueHead_WaitDeque;
 static /*volatile*/ wait_queue_head_t P2WaitQueueHead_WaitFrame;
@@ -5313,7 +5309,7 @@ static int ISP_SetPMQOS(unsigned int cmd, unsigned int module)
  * update current idnex to working frame
  *****************************************************************************/
 static signed int ISP_P2_BufQue_Update_ListCIdx(
-	enum ISP_P2_BUFQUE_PROPERTY property,
+	enum ISP_P2_BUFQUE_PROPERTY propertyU,
 	enum ISP_P2_BUFQUE_LIST_TAG listTag)
 {
 	signed int ret = 0;
@@ -5321,7 +5317,9 @@ static signed int ISP_P2_BufQue_Update_ListCIdx(
 	signed int cnt = 0;
 	bool stop = false;
 	int i = 0;
+	unsigned int property = 0;
 	enum ISP_P2_BUF_STATE_ENUM cIdxSts = ISP_P2_BUF_STATE_NONE;
+	property = propertyU;
 
 	switch (listTag) {
 	case ISP_P2_BUFQUE_LIST_TAG_UNIT:
@@ -5422,7 +5420,7 @@ static signed int ISP_P2_BufQue_Update_ListCIdx(
 /******************************************************************************
  *
  *****************************************************************************/
-static signed int ISP_P2_BufQue_Erase(enum ISP_P2_BUFQUE_PROPERTY property,
+static signed int ISP_P2_BufQue_Erase(enum ISP_P2_BUFQUE_PROPERTY propertyU,
 enum ISP_P2_BUFQUE_LIST_TAG listTag, signed int idx)
 {
 	signed int ret =  -1;
@@ -5430,6 +5428,9 @@ enum ISP_P2_BUFQUE_LIST_TAG listTag, signed int idx)
 	int i = 0;
 	signed int cnt = 0;
 	int tmpIdx = 0;
+	unsigned int property = 0;
+
+	property = propertyU;
 
 	switch (listTag) {
 	case ISP_P2_BUFQUE_LIST_TAG_PACKAGE:
@@ -5549,7 +5550,7 @@ static signed int ISP_P2_BufQue_GetMatchIdx(struct ISP_P2_BUFQUE_STRUCT param,
 {
 	int idx = -1;
 	int i = 0;
-	int property;
+	unsigned int property;
 
 	if (param.property >= ISP_P2_BUFQUE_PROPERTY_NUM) {
 		pr_err("property err(%d)\n", param.property);
@@ -5766,7 +5767,7 @@ static inline unsigned int ISP_P2_BufQue_WaitEventState(
 {
 	unsigned int ret = MFALSE;
 	signed int index = -1;
-	enum ISP_P2_BUFQUE_PROPERTY property;
+	unsigned int property;
 
 	if (param.property >= ISP_P2_BUFQUE_PROPERTY_NUM) {
 		pr_err("property err(%d)\n", param.property);
@@ -5835,7 +5836,7 @@ static signed int ISP_P2_BufQue_CTRL_FUNC(struct ISP_P2_BUFQUE_STRUCT param)
 	int i = 0, q = 0;
 	int idx =  -1, idx2 =  -1;
 	signed int restTime = 0;
-	int property;
+	unsigned int property;
 
 	if (param.property >= ISP_P2_BUFQUE_PROPERTY_NUM) {
 		pr_err("property err(%d)\n", param.property);
@@ -8111,18 +8112,9 @@ static long ISP_ioctl(struct file *pFile, unsigned int Cmd, unsigned long Param)
 			unsigned long long reg_trans_Time;
 			unsigned long long sum;
 
-			ccu_get_timestamp(&hwTickCnt_ccu_direct[0],
-				&hwTickCnt_ccu_direct[1]);
-
-			pr_debug("hwTickCnt_ccu_direct[0]:%u,hwTickCnt_ccu_direct[1]:%u",
-				hwTickCnt_ccu_direct[0],
-				hwTickCnt_ccu_direct[1]);
-
 			sum =
 			(unsigned long long)hwTickCnt_ccu_direct[0] +
 			((unsigned long long)hwTickCnt_ccu_direct[1]<<32);
-
-			pr_debug("sum of hwTickCnt:%llu", sum);
 
 			if (sum == 0) {
 				globaltime[0] = 0;
@@ -8771,25 +8763,6 @@ static long ISP_ioctl(struct file *pFile, unsigned int Cmd, unsigned long Param)
 			}
 		}
 		break;
-	case ISP_SET_VIR_CQCNT:
-		spin_lock((spinlock_t *)(&virtual_cqcnt_lock));
-		if (copy_from_user(&g_virtual_cq_cnt, (void *)Param,
-			sizeof(unsigned int)*2) == 0) {
-			pr_info("From hw_module:%d Virtual CQ count from user land : %d\n",
-			g_virtual_cq_cnt[0], g_virtual_cq_cnt[1]);
-		} else {
-			pr_info(
-				"Virtual CQ count copy_from_user failed\n");
-			Ret = -EFAULT;
-		}
-
-		if (g_virtual_cq_cnt[0] == 0)
-			g_virtual_cq_cnt_a = g_virtual_cq_cnt[1];
-		else if (g_virtual_cq_cnt[0] == 1)
-			g_virtual_cq_cnt_b = g_virtual_cq_cnt[1];
-
-		spin_unlock((spinlock_t *)(&virtual_cqcnt_lock));
-		break;
 	default:
 	{
 		pr_err("Unknown Cmd(%d)\n", Cmd);
@@ -9276,7 +9249,6 @@ static long ISP_ioctl_compat(struct file *filp, unsigned int cmd,
 	case ISP_SET_PM_QOS_INFO:
 	case ISP_SET_PM_QOS:
 	case ISP_SET_SEC_DAPC_REG:
-	case ISP_SET_VIR_CQCNT:
 		return filp->f_op->unlocked_ioctl(filp, cmd, arg);
 	default:
 		return -ENOIOCTLCMD;
@@ -10200,7 +10172,6 @@ static signed int ISP_probe(struct platform_device *pDev)
 		spin_lock_init(&(SpinLock_P2FrameList));
 		spin_lock_init(&(SpinLockRegScen));
 		spin_lock_init(&(SpinLock_UserKey));
-		spin_lock_init(&(virtual_cqcnt_lock));
 		#ifdef ENABLE_KEEP_ION_HANDLE
 		for (i = 0; i < ISP_DEV_NODE_NUM; i++) {
 			if (gION_TBL[i].node != ISP_DEV_NODE_NUM) {
@@ -14246,6 +14217,7 @@ irqreturn_t ISP_Irq_CAM_A(signed int Irq, void *DeviceId)
 	if ((IrqStatus & HW_PASS1_DON_ST) || (IrqStatus & SOF_INT_ST))
 		cur_v_cnt = ISP_RD32_TG_CAM_FRM_CNT(module, reg_module);
 
+#if 0
 	if ((IrqStatus & HW_PASS1_DON_ST) && (IrqStatus & SOF_INT_ST)) {
 		if (cur_v_cnt != sof_count[module])
 			IRQ_LOG_KEEPER(module, m_CurrentPPB, _LOG_INF,
@@ -14260,6 +14232,7 @@ irqreturn_t ISP_Irq_CAM_A(signed int Irq, void *DeviceId)
 			    (sof_count[module]) ?
 			    (sof_count[module] - 1) : (sof_count[module]));
 	}
+#endif
 
 	spin_lock(&(IspInfo.SpinLockIrq[module]));
 	if (IrqStatus & VS_INT_ST) {
@@ -14279,6 +14252,7 @@ irqreturn_t ISP_Irq_CAM_A(signed int Irq, void *DeviceId)
 		IspInfo.IrqInfo.LastestSigTime_sec[module][10] =
 			(unsigned int)(sec);
 
+#if 0
 		if (IspInfo.DebugMask & ISP_DBG_INT) {
 			/*SW p1_don is not reliable*/
 			if (FrameStatus[module] != CAM_FST_DROP_FRAME) {
@@ -14293,6 +14267,7 @@ irqreturn_t ISP_Irq_CAM_A(signed int Irq, void *DeviceId)
 					(unsigned int)(fbc_ctrl2[1].Raw));
 			}
 		}
+#endif
 
 		#if (TSTMP_SUBSAMPLE_INTPL == 1)
 		if (g1stSwP1Done[module] == MTRUE) {
@@ -14355,11 +14330,13 @@ irqreturn_t ISP_Irq_CAM_A(signed int Irq, void *DeviceId)
 		FrameStatus[module] =
 			Irq_CAM_FrameStatus(reg_module, module, irqDelay);
 
+#if 0
 		if (FrameStatus[module] == CAM_FST_DROP_FRAME) {
 			IRQ_LOG_KEEPER(module, m_CurrentPPB, _LOG_INF,
 				"CAMA Lost p1 done_%d (0x%x): ",
 				sof_count[module], cur_v_cnt);
 		}
+#endif
 
 		/* During SOF, re-enable that err/warn irq had been marked and
 		 * reset IrqCntInfo
@@ -14600,6 +14577,7 @@ irqreturn_t ISP_Irq_CAM_A(signed int Irq, void *DeviceId)
 			}
 			#endif /* (TIMESTAMP_QUEUE_EN == 1) */
 
+#if 0
 			IRQ_LOG_KEEPER(module, m_CurrentPPB, _LOG_INF,
 				"CAMA P1_SOF_%d_%d(0x%x_0x%x,0x%x_0x%x,0x%x,0x%x,0x%x),int_us:%d,cq:0x%x\n",
 				   sof_count[module], cur_v_cnt,
@@ -14631,16 +14609,18 @@ irqreturn_t ISP_Irq_CAM_A(signed int Irq, void *DeviceId)
 				    ISP_RD32(CAM_REG_FBC_PSO_CTL1(reg_module)),
 				    ISP_RD32(CAM_REG_FBC_PSO_CTL2(reg_module)));
 #endif
+#endif
 			/* keep current time */
 			m_sec = sec;
 			m_usec = usec;
 
+#if 0
 			/* dbg information only */
 			if (cur_v_cnt !=
 			    ISP_RD32_TG_CAM_FRM_CNT(module, reg_module))
 				IRQ_LOG_KEEPER(module, m_CurrentPPB, _LOG_INF,
 					"SW ISR right on next hw p1_done\n");
-
+#endif
 		}
 
 		/* update SOF time stamp for eis user(need match with the time
@@ -14710,21 +14690,9 @@ LB_CAMA_SOF_IGNORE:
 	spin_unlock(&(IspInfo.SpinLockIrq[module]));
 	/*  */
 	if (IrqStatus & SOF_INT_ST) {
-		if ((ISP_RD32(CAM_REG_CTL_SPARE2(reg_module))%0x100) !=
-			g_virtual_cq_cnt_a) {
-			IRQ_LOG_KEEPER(module, m_CurrentPPB, _LOG_INF,
-			"CAMA PHY cqcnt:%d != VIR cqcnt:%d\n",
-			(ISP_RD32(CAM_REG_CTL_SPARE2(reg_module))%0x100),
-			g_virtual_cq_cnt_a);
-		} else {
-			IRQ_LOG_KEEPER(module, m_CurrentPPB, _LOG_INF,
-			"CAMA PHY cqcnt:%d VIR cqcnt:%d\n",
-			(ISP_RD32(CAM_REG_CTL_SPARE2(reg_module))%0x100),
-			g_virtual_cq_cnt_a);
-			wake_up_interruptible(&IspInfo.WaitQHeadCam
+		wake_up_interruptible(&IspInfo.WaitQHeadCam
 			[ISP_GetWaitQCamIndex(module)]
 			[ISP_WAITQ_HEAD_IRQ_SOF]);
-		}
 	}
 	if (IrqStatus & SW_PASS1_DON_ST) {
 		wake_up_interruptible(&IspInfo.WaitQHeadCam
@@ -14993,11 +14961,13 @@ irqreturn_t ISP_Irq_CAM_B(signed int  Irq, void *DeviceId)
 		/* chk this frame have EOF or not, dynimic dma port chk */
 		FrameStatus[module] =
 			Irq_CAM_FrameStatus(reg_module, module, irqDelay);
+#if 0
 		if (FrameStatus[module] == CAM_FST_DROP_FRAME) {
 			IRQ_LOG_KEEPER(module, m_CurrentPPB, _LOG_INF,
 				"CAMB Lost p1 done_%d (0x%x): ",
 				sof_count[module], cur_v_cnt);
 		}
+#endif
 
 		/* During SOF, re-enable that err/warn irq had been marked and
 		 * reset IrqCntInfo
@@ -15346,21 +15316,9 @@ LB_CAMB_SOF_IGNORE:
 	spin_unlock(&(IspInfo.SpinLockIrq[module]));
 	/*  */
 	if (IrqStatus & SOF_INT_ST) {
-		if ((ISP_RD32(CAM_REG_CTL_SPARE2(reg_module))%0x100) !=
-			g_virtual_cq_cnt_b) {
-			IRQ_LOG_KEEPER(module, m_CurrentPPB, _LOG_INF,
-			"CAMB PHY cqcnt:%d != VIR cqcnt:%d\n",
-			(ISP_RD32(CAM_REG_CTL_SPARE2(reg_module))%0x100),
-			g_virtual_cq_cnt_b);
-		} else {
-			IRQ_LOG_KEEPER(module, m_CurrentPPB, _LOG_INF,
-			"CAMB PHY cqcnt:%d VIR cqcnt:%d\n",
-			(ISP_RD32(CAM_REG_CTL_SPARE2(reg_module))%0x100),
-			g_virtual_cq_cnt_b);
-			wake_up_interruptible(&IspInfo.WaitQHeadCam
+		wake_up_interruptible(&IspInfo.WaitQHeadCam
 			[ISP_GetWaitQCamIndex(module)]
 			[ISP_WAITQ_HEAD_IRQ_SOF]);
-		}
 	}
 	if (IrqStatus & SW_PASS1_DON_ST) {
 		wake_up_interruptible(&IspInfo.WaitQHeadCam
@@ -15498,12 +15456,14 @@ static void ISP_TaskletFunc_SV_5(unsigned long data)
 #if (ISP_BOTTOMHALF_WORKQ == 1)
 static void ISP_BH_Workqueue(struct work_struct *pWork)
 {
+#if 0
 	struct IspWorkqueTable *pWorkTable =
 		container_of(pWork, struct IspWorkqueTable, isp_bh_work);
 
 	IRQ_LOG_PRINTER_PR_ERR(pWorkTable->module, m_CurrentPPB, _LOG_ERR);
 	IRQ_LOG_PRINTER(pWorkTable->module, m_CurrentPPB, _LOG_INF);
 	SMI_INFO_DUMP(pWorkTable->module);
+#endif
 }
 #endif
 

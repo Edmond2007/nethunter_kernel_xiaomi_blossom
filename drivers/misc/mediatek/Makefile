@@ -68,7 +68,6 @@ obj-$(CONFIG_MTK_PERF_COMMON) += perf_common/
 ifneq ($(CONFIG_MTK_SYSTRACKER_DISABLE),y)
 obj-$(CONFIG_MTK_SYSTRACKER_V2) += systracker/
 endif
-obj-$(CONFIG_MTK_HANG_DETECT) += monitor_hang/
 obj-$(CONFIG_MTK_POWER_THROTTLING_COMMON) += power_throttling/
 
 obj-$(CONFIG_MTK_LEGACY_THERMAL) += thermal/
@@ -79,7 +78,6 @@ obj-$(CONFIG_MTK_STATIC_POWER) += leakage_table_v2/
 obj-$(CONFIG_MTK_UNIFY_POWER) += upower_v2/
 endif
 
-obj-$(CONFIG_PRINTK_MTK) += mtprintk/
 obj-$(CONFIG_MTK_LEDS) += leds/
 obj-$(CONFIG_MT6360_DBG) += subpmic/
 obj-$(CONFIG_MTK_CAMERA_ISP) += cameraisp/

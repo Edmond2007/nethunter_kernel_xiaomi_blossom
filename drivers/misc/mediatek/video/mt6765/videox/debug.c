@@ -9,6 +9,7 @@
 #include <linux/fb.h>
 #include <linux/vmalloc.h>
 #include <linux/sched.h>
+#include <linux/sched/clock.h>
 
 #if IS_ENABLED(CONFIG_DEBUG_FS)
 #include <linux/debugfs.h>
@@ -19,11 +20,9 @@
 #endif
 
 #include <linux/wait.h>
-#include <linux/time.h>
 #include <linux/delay.h>
 #include <linux/fs.h>
 #include <linux/file.h>
-#include <linux/sched.h>
 #include "ddp_m4u.h"
 #include "disp_drv_log.h"
 #include "mtkfb.h"
@@ -1244,7 +1243,7 @@ static void process_dbg_opt(const char *opt)
 			DDPMSG("dump_layer En %d\n", gCaptureWdmaLayerEnable);
 		}
 	} else if (strncmp(opt, "dump_rdma_layer:", 16) == 0) {
-#if defined(CONFIG_MTK_ENG_BUILD) || !defined(CONFIG_MTK_GMO_RAM_OPTIMIZE)
+#if defined(CONFIG_MTK_ENG_BUILD)
 		if (strncmp(opt + 16, "on", 2) == 0) {
 			ret = sscanf(opt, "dump_rdma_layer:on,%d,%d\n",
 				     &gCapturePriLayerDownX,

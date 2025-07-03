@@ -799,16 +799,6 @@ config GCOV_PROFILE_FTRACE
 	  Note that on a kernel compiled with this config, ftrace will
 	  run significantly slower.
 
-config MMSTAT_TRACER
-	tristate "Trace memory status periodically"
-	default m
-	help
-	  Periodic tracing of memory status.
-
-	  Mmstat tracer will track memory usage periodically according to
-	  indicated timer interval, which includes meminfo, buddy system,
-	  hardware memory(if possible) and process memory.
-
 endif # FTRACE
 
 endif # TRACING_SUPPORT

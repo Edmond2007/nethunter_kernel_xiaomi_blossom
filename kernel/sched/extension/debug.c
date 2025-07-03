@@ -46,15 +46,7 @@ int show_cpu_info(char *buf, int buf_size)
 			);
 
 		len += snprintf(buf+len, buf_size-len,
-#ifdef CONFIG_SCHED_TUNE
-			"boost=%4lu cfs=%4lu rt=%4lu (%s)\n",
-
-			/* cpu boost utilization */
-			cpu_online(cpu)?stune_util(cpu,
-					cpu_util_rt(cpu_rq(cpu))):0,
-#else
 			"cfs=%4lu rt=%4lu (%s)\n",
-#endif
 			/* cpu cfs utilization */
 			cpu_online(cpu)?cpu_util_cfs(cpu_rq(cpu)):0,
 
@@ -126,36 +118,11 @@ static struct attribute_group eas_attr_group = {
 
 static int init_eas_attribs(void)
 {
-	int err;
-
-	eas_info.attr_group = &eas_attr_group;
-
-	/* Create /sys/devices/system/cpu/eas/... */
-	eas_info.kobj = kobject_create_and_add("eas",
-				&cpu_subsys.dev_root->kobj);
-	if (!eas_info.kobj)
-		return -ENOMEM;
-
-	err = sysfs_create_group(eas_info.kobj, eas_info.attr_group);
-	if (err)
-		kobject_put(eas_info.kobj);
-	else
-		kobject_uevent(eas_info.kobj, KOBJ_ADD);
-
-	return err;
+	return 0;
 }
 
 static int __init eas_stats_init(void)
 {
-	int ret = 0;
-
-	eas_info.init = 0;
-
-	ret = init_eas_attribs();
-
-	if (ret)
-		eas_info.init = 1;
-
-	return ret;
+	return 0;
 }
 late_initcall(eas_stats_init);

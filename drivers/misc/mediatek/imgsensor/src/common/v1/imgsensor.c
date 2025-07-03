@@ -2684,6 +2684,7 @@ static long imgsensor_ioctl(
 	default:
 		PK_DBG("No such command %d\n", a_u4Command);
 		i4RetValue = -EPERM;
+		goto CAMERA_HW_Ioctl_EXIT;
 		break;
 	}
 
@@ -2691,14 +2692,14 @@ static long imgsensor_ioctl(
 		    copy_to_user((void __user *) a_u4Param,
 						  pBuff,
 						_IOC_SIZE(a_u4Command))) {
-		kfree(pBuff);
 		PK_DBG("[CAMERA SENSOR] ioctl copy to user failed\n");
 		i4RetValue =  -EFAULT;
 		goto CAMERA_HW_Ioctl_EXIT;
 	}
 
-	kfree(pBuff);
 CAMERA_HW_Ioctl_EXIT:
+	if (pBuff != NULL)
+		kfree(pBuff);
 	return i4RetValue;
 }
 
@@ -2912,6 +2913,8 @@ static ssize_t imgsensor_name_show(struct device *dev, struct device_attribute *
 	ssize_t ret = 0;
 	int num1 = 0;
 	int num2 = 0;
+	int num3 = 0;
+	int num4 = 0;
 
 	char* dst[4];
 	unsigned int i=0;
@@ -2948,6 +2951,21 @@ static ssize_t imgsensor_name_show(struct device *dev, struct device_attribute *
 				if(!strcmp("gc_gc5035_i", dst[j]) || !strcmp("gc_gc5035_ii", dst[j]) || !strcmp("gc_gc5035_iii", dst[j]) || !strcmp("gc_gc5035_iiii", dst[j])){
 					num2 = sprintf(buf + num1, "FRONT=%s\n", dst[j]);
 					pr_info("[chenxy] FRONT=%s\n", dst[j]);
+					break;
+				}
+			}
+			for(j=0; j < i; j++) {
+				if(!strcmp("hynix_hi259_i", dst[j]) || !strcmp("hynix_hi259_ii", dst[j]) || !strcmp("hynix_hi259_iii", dst[j]) || !strcmp("hynix_hi259_iv", dst[j])){
+					num3 = sprintf(buf+num1+num2, "MACRO=%s\n", dst[j]);
+					no_printk("[chenxy] MACRO=%s\n", dst[j]);
+					break;
+				}
+			}
+
+			for(j=0; j < i; j++) {
+				if(!strcmp("ov_ov02b_i", dst[j]) || !strcmp("gc_gc02m1_ii", dst[j]) || !strcmp("ov_ov02b_iii", dst[j])){
+					num4 = sprintf(buf+num1+num2+num3, "DEPTH=%s\n", dst[j]);
+					no_printk("[chenxy] DEPTH=%s\n", dst[j]);
 					break;
 				}
 			}
