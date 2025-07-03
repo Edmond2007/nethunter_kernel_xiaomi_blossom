@@ -77,9 +77,9 @@ class AdcObj(ModuleObj):
             value = ModuleObj.get_data(self)[key]
 
             if value == "TEMPERATURE":
-                gen_str += '''\t\tmediatek,%s0 = <%d>;\n''' %(value.lower(), string.atoi(key[3:]))
+                gen_str += '''\t\tmediatek,%s0 = <%d>;\n''' %(value.lower(), int(key[3:]))
             elif value != "IO_CHANNELS" and not (value.startswith("IO_CHANNELS") and len(value) == 12 and int(value[-1]) in range(10)):
-                gen_str += '''\t\tmediatek,%s = <%d>;\n''' %(value.lower(), string.atoi(key[3:]))
+                gen_str += '''\t\tmediatek,%s = <%d>;\n''' %(value.lower(), int(key[3:]))
 
         gen_str += '''\t\tstatus = \"okay\";\n'''
         gen_str += '''\t};\n'''
@@ -90,7 +90,7 @@ class AdcObj(ModuleObj):
         if value == "IO_CHANNELS":
             gen_str += '''\tio-channels = <&auxadc 0>;\n'''
         elif value.startswith("IO_CHANNELS") and len(value) == 12 and int(value[-1] )in range(10):
-            gen_str += '''\tio-channels = <&auxadc %d>;\n''' % string.atoi(value[-1])
+            gen_str += '''\tio-channels = <&auxadc %d>;\n''' % int(value[-1])
 
         gen_str += '''};\n'''
 
