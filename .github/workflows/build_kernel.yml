@@ -37,6 +37,7 @@ jobs:
             clang lld llvm gcc-aarch64-linux-gnu gcc-arm-linux-gnueabi \
             python3 python3-pip ninja-build zip ccache
           sudo ln -sf /usr/bin/ld.lld /usr/bin/ld || true
+          echo "VERSION=$(grep -E '^VERSION|^PATCHLEVEL|^SUBLEVEL' Makefile | awk '{print $3}' | paste -sd. - | sed 's/\.\(-.*\)/\1/')" >> $GITHUB_ENV
 
       - name: Notify start on Telegram
         run: |
@@ -45,6 +46,7 @@ jobs:
             --data-urlencode "text=☢️ *Kernel Build Started!*
             *Device:* blossom
             *Arch:* arm64
+            *Kernel Version:* $VERSION
             *Commit:* [${GITHUB_SHA::7}](${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/commit/${GITHUB_SHA})" \
             -d parse_mode=Markdown
 
