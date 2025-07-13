@@ -11,7 +11,7 @@ env:
   CC: clang
   CLANG_TRIPLE: aarch64-linux-gnu-
   CCACHE_DIR: /tmp/ccache
-  DEFCONFIG: blossom
+  DEFCONFIG: nethunter
 
 jobs:
   build:
